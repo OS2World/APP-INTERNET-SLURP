@@ -1,0 +1,330 @@
+
+
+
+SLURP(1)                                                 SLURP(1)
+
+
+NAME
+       slurp  -  retrieve  netnews  articles  from  a remote NNTP
+       server
+
+
+SYNOPSIS
+       slurp [ -g newsgroups/distributions ] [ -t  time  ]  [  -a
+       username/password  ]  [  -d  ] [ -i ] [ -l ] [ -r ] [ -w ]
+       hostname[ /sublist ][ :timefile ]
+
+
+DESCRIPTION
+       Slurp is an advanced passive NNTP client for UNIX. It will
+       connect to a remote NNTP server and retrieve articles in a
+       specified set of Usenet newsgroups that have arrived after
+       a particular time (typically the last time it was invoked)
+       for processing by your local news system.
+
+
+OPTIONS
+       -g newsgroups/distributions
+              If specified then overrides any newsgroups and dis-
+              tributions   specification   for  hostname  in  the
+              slurp.sys file.
+
+       -t time
+              Retrieve articles that have arrived at  the  server
+              after  time  rather  than using the time taken from
+              slurp.<hostname>.  This is  in  the  standard  NNTP
+              time  format  of  'YYMMDD HHMMSS' GMT. For example,
+              midnight GMT on the 1st of December  1992  will  be
+              '921201  000000'.  Note  that  you will need to use
+              quotes around the time and remember that  the  time
+              is in GMT, not the local or server time.
+
+       -a username/password
+              If  specified then the username and password combi-
+              nation will be sent to the server as  part  of  the
+              simple  authorisation  protocol when the connection
+              is first made.
+
+       -d     Enable debugging. This diverts reporting to  stderr
+              instead of syslog and turns on extra debugging out-
+              put.
+
+       -i     Normally if an error occurs while fetching articles
+              from  the  server,  the remaining message IDs to be
+              fetched are written  to  slurp.<hostname>  so  that
+              they  may  be retrieved in the next session without
+              having to restart the NEWNEWS at  the  same  point.
+              With  this  option selected, no message IDs will be
+              read from slurp.<hostname> and in the event  of  an
+              error   occurring,  slurp.<hostname>  will  not  be
+              updated.
+
+
+
+V1.08                     20 August 1993                        1
+
+
+
+
+
+SLURP(1)                                                 SLURP(1)
+
+
+       -l     Local time  is  used  to  set  the  start  time  in
+              slurp.<hostname>   for  the  next  news  retrieval,
+              rather than setting the start time through  a  call
+              to the tcp time service at the remote server.
+
+       -r     A  'MODE  READER'  command  is  sent  to the remote
+              server. This is used when connecting  with  an  INN
+              site  which needs to be switched from innd to nnrpd
+              so the NEWNEWS command can be issued.
+
+       -w     The time for the next news retrieval is not written
+              to slurp.<hostname>.
+
+       hostname
+              The  hostname  of the remote NNTP server to connect
+              to. This must be specified.
+
+       [/sublist]
+              If this is specified, then the entry  in  slurp.sys
+              which  contains /sublist after the hostname will be
+              used. This lets you take different groups from  the
+              same server at different times.
+
+       [:timefile]
+              Use  this  to  specify an alternate filename to use
+              for the file  containing  the  time  for  the  next
+              NEWNEWS  at  a particular host. Normally slurp will
+              use the hostname, but this can  cause  problems  on
+              file systems with short filenames.
+
+
+CONFIGURATION FILES
+       There are two configuration files used by slurp.
+
+   slurp.sys
+       Entries in slurp.sys take the form
+
+              host-
+              name/sublist:groups/distributions:flags:username/password
+
+       This  format should be familar to people who have used the
+       C News sys file. Entries for a particular host can be con-
+       tinued  on more than one line by using a '\' at the end of
+       the line. e.g.
+
+              hostname:group1,group2,\
+              group3,group4,group5
+
+       Slurp is even more picky about the presence of  whitespace
+       than  C  News.  It  can  only appear in comments. Comments
+       begin with a '#' and continue to the end of the line.
+
+       Using distributions is  not  recommended  -  they're  only
+       really  included  for  completeness.  Under  current  NNTP
+
+
+
+V1.08                     20 August 1993                        2
+
+
+
+
+
+SLURP(1)                                                 SLURP(1)
+
+
+       implementations, setting distributions requires the server
+       to open each article, search through for the distributions
+       line and check it against the supplied list. This will not
+       only  increase  the  load on the server substantially, but
+       increase the amount of time for the connection.
+
+       There are 3 possible flags: i, l and r which have the same
+       meaning  as the command line options. If present, username
+       and password will be sent to the server  as  part  of  the
+       simple authorisation protocol when the connection is first
+       made.
+
+   slurp.<hostname>[.<sublist>]
+       The file slurp.<hostname> contains  the  time  when  slurp
+       last connected to the NNTP server at <hostname>. If a sub-
+       list has been specified with the -s option then this  will
+       be appended with a period to the name.  slurp can then use
+       this time to pick up all the articles that have arrived at
+       the  server  since the last session. It may be followed on
+       subsequent lines by a list of message IDs of articles that
+       are to be retrieved from the server in the next session.
+
+       Each  time  slurp is run and slurp.<hostname> updated, the
+       current slurp.<hostname> will be backed  up  in  the  file
+       slurp.<hostname>.o.
+
+
+OPERATION
+       When  run, slurp will first retrieve the appropriate news-
+       group list, distribution list and start time for the spec-
+       ified server, either from the configuration files or over-
+       riding those settings with the command line options.
+
+       If the -w option is not set, then the current time will be
+       obtained to use as the start time for the next session. If
+       the -l option is specified, this will be  taken  from  the
+       local  machine,  otherwise  it  will be retrieved from the
+       remote server through a  call  to  the  tcp  time  service
+       there. If -i is not specified, then the message IDs of any
+       articles which were not retrieved in the last session will
+       be loaded from slurp.<hostname>.
+
+       Slurp  will  now  connect to the NNTP server at the remote
+       host. If a username and password for use with  the  simple
+       authorisation  protocol  have been supplied then they will
+       be sent to the server. If the -r option is specified, then
+       a  'MODE  READER'  command  will be sent, to ensure at INN
+       sites that slurp is talking to nnrpd.
+
+       A NEWNEWS request will now be issued, asking for  all  the
+       articles  that have arrived in the specified list of news-
+       groups since the specified time. The server  will  respond
+       with a list of message IDs. If a message ID is not already
+       present in the local history file, then it will be  stored
+
+
+
+V1.08                     20 August 1993                        3
+
+
+
+
+
+SLURP(1)                                                 SLURP(1)
+
+
+       in  memory.  If the list of newsgroups is too large to fit
+       on one line (NNTP has a maximum line length of 512 charac-
+       ters)  then  a  series of NEWNEWS requests will be carried
+       out, adding further message IDs to the memory list if they
+       are not already present.
+
+       Once  this has been completed, slurp moves into an article
+       retrieval stage. It will go through the  list  of  message
+       IDs  in  memory  and request them in turn from the server,
+       adding each article to the batch of articles being  either
+       stored  in  the incoming news directory or piped to rnews.
+       When a batch is found to be larger than the maximum  size,
+       it will be submitted to the news system.
+
+       Once all the articles have been retrieved, the final batch
+       of articles will be submitted. If the -w  option  has  not
+       been set, then the previously obtained time to use for the
+       next NEWNEWS will be written to slurp.<hostname>.   If  an
+       error  has  occurred,  then  the  message IDs of any unre-
+       trieved articles  are  also  written  to  this  file,  for
+       retrieval in the next session.
+
+       Statistics  on the connection will be logged to syslog (or
+       stderr if syslog is not available). The new article  count
+       is  the  total number of articles that have been submitted
+       to the new system. The duplicate count is how many message
+       IDs  were  found  to already exist on the local system. If
+       two NEWNEWS requests are necessary and a  message  ID  was
+       returned  by both requests, then it will be included twice
+       in the duplicate count. The missing count is  those  arti-
+       cles  which  were  in the server's history file but didn't
+       exist as actual article files, usually because  they  have
+       been  cancelled.  If  configured, the speed of transfer of
+       the article retrieval stage will also be logged.
+
+
+RETURN CODES
+       Slurp returns a series of return codes which may be useful
+       to controlling programs:-
+              0 - Successful completion
+              1 - General system error
+              2  - Incorrect arguments supplied or incorrect con-
+              figuration files.
+              3 - Error occurred during  attempt  to  connect  to
+              remote host
+              4 - NNTP Protocol error
+              5  -  Insufficient  disk  space  available for news
+              batch.
+
+
+FILES
+       /usr/lib/news/slurp.sys
+       /usr/lib/news/slurp.<hostname>
+
+
+
+
+V1.08                     20 August 1993                        4
+
+
+
+
+
+SLURP(1)                                                 SLURP(1)
+
+
+AUTHOR
+       Stephen Hebditch <steveh@orbital.demon.co.uk>
+
+SEE ALSO
+       rnews(8)
+       RFC977 - Network News Transfer Protocol (NNTP),
+       RFC1036 - Usenet Article Format standard.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+V1.08                     20 August 1993                        5
+
+
